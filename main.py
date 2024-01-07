@@ -29,7 +29,12 @@ class Scroll3DViewer:
         self.canvas.pack(fill="both", expand=True)
 
     def update_canvas(self):
-        img_data = self.scrolldata.dset[4000:4500, 4000:4500, 7000] / 256
+        l0 = 100
+        l1 = 230
+        a = self.scrolldata.dset[4000:4500, 4000:4500, 7000] / 256
+        a = (a.clip(l0, l1) - l0) * (255. / (l1 - l0))
+        img_data = a
+
         img = Image.fromarray(img_data).convert("RGBA")
         self._canvas_photoimg = ImageTk.PhotoImage(image=img)  # save to instance var to make sure it is not garbage collected
         self.canvas.create_image(5, 5, anchor=tk.NW, image=self._canvas_photoimg)
