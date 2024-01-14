@@ -4,26 +4,23 @@ import numpy as np
 
 
 class Navigation:
-    rotation_matrix = None
+    transformation_matrix = None
+    drag_in_progress = False
 
     def __init__(self):
-        self.rotation_matrix = np.identity(4)
-        self.move_x = self.move_y = 0
+        pass
 
     def on_drag_start(self, event):
-        self.drag_current_x = self.drag_start_x = event.x
-        self.drag_current_y = self.drag_start_y = event.y
-        self.drag_ctrl = self._is_ctrl_pressed(event)
-        self.drag_alt = self._is_alt_pressed(event)
-        self.drag_shift = self._is_shift_pressed(event)
-        self.drag_rotation_matrix_start = self.rotation_matrix
+        self.drag_in_progress = True
+        self.drag_start_x = event.x
+        self.drag_start_y = event.y
+        self.drag_is_rotation = self._is_alt_pressed(event)
+        self.transformation_matrix = np.identity(4)
 
     def on_drag_move(self, event):
-        self.current_x = event.x
-        self.current_y = event.y
-        diff_x = self.current_x - self.drag_start_x
-        diff_y = self.current_y - self.drag_start_y
-        if self.drag_alt:
+        diff_x = event.x - self.drag_start_x
+        diff_y = event.y - self.drag_start_y
+        if self.drag_is_rotation:
             fih = diff_x * math.pi / 180
             cos_fih, sin_fih = math.cos(fih), math.sin(fih)
             fiv = diff_y * math.pi / 180
@@ -44,17 +41,22 @@ class Navigation:
                     [0, 0, 0, 1],
                 ]
             )
-            self.rotation_matrix = self.drag_rotation_matrix_start @ Rh @ Rv
+            self.transformation_matrix = Rh @ Rv
         else:
-            self.move_x = -diff_x
-            self.move_y = -diff_y
+            self.transformation_matrix = np.array(
+                [
+                    [1, 0, 0, -diff_y],
+                    [0, 1, 0, -diff_x],
+                    [0, 0, 1, 0],  # our z dimension is of size 1, no moving back after rotation
+                    [0, 0, 0, 1],
+                ]
+            )
 
     def on_drag_end(self, event):
-        self.drag_current_x = self.drag_start_x = None
-        self.drag_current_y = self.drag_start_y = None
-
-    def reset_position(self):
-        self.move_x = self.move_y = 0
+        self.drag_start_x = None
+        self.drag_start_y = None
+        self.drag_in_progress = False
+        self.transformation_matrix = None
 
     def _is_ctrl_pressed(self, event):
         return event.state & 0x04
