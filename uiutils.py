@@ -6,9 +6,9 @@ import numpy as np
 class Navigation:
     rotation_matrix = None
 
-    def __init__(self, x, y, z):
-        self.position = (x, y, z)
+    def __init__(self):
         self.rotation_matrix = np.identity(4)
+        self.move_x = self.move_y = 0
 
     def on_drag_start(self, event):
         self.drag_current_x = self.drag_start_x = event.x
@@ -45,10 +45,16 @@ class Navigation:
                 ]
             )
             self.rotation_matrix = self.drag_rotation_matrix_start @ Rh @ Rv
+        else:
+            self.move_x = -diff_x
+            self.move_y = -diff_y
 
     def on_drag_end(self, event):
         self.drag_current_x = self.drag_start_x = None
         self.drag_current_y = self.drag_start_y = None
+
+    def reset_position(self):
+        self.move_x = self.move_y = 0
 
     def _is_ctrl_pressed(self, event):
         return event.state & 0x04

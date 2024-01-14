@@ -13,19 +13,20 @@ from uiutils import Navigation
 class Scroll3DViewer:
     arguments = None
     scrolldata = None
-    position = None
+    position_yxz = None
     _scrolldata_cache = None
-    navigation = None
     canvas_pad = 150
+    navigation = Navigation()
     _scrolldata_cache_pad = math.ceil(math.sqrt(3 * canvas_pad ** 2))
+    _canvas_display_matrix = None
 
     def __init__(self):
         self.parse_args()
         print(f"Opening scroll data: {self.arguments.h5fs_scroll}")
         self.scrolldata = H5FS(self.arguments.h5fs_scroll, "r").open()
-        self.navigation = Navigation(*list(np.array(self.scrolldata.dset.shape) // 2))
+        self.position_yxz = list(np.array(self.scrolldata.dset.shape) // 2)  # initial position is in the center of scroll
         self.init_ui()
-        self.move_to_position(*list(np.array(self.scrolldata.dset.shape) // 2))
+        self.load_scroll_data_around_position()
 
     def parse_args(self):
         argparser = argparse.ArgumentParser(usage="%(prog)s [OPTION]...", description="3D viewer for Vesuvius Challenge scroll data.")
@@ -34,21 +35,19 @@ class Scroll3DViewer:
 
     def init_ui(self):
         self.root = tk.Tk()
-        self.root.attributes("-zoomed", True)
+        # self.root.attributes("-zoomed", True)
         self.root.title("Scroll 3D Viewer")
 
         self.canvas = tk.Canvas(self.root, bg="white")
         self.canvas.pack(fill="both", expand=True)
 
-        self.canvas.bind("<ButtonPress-1>", self.navigation.on_drag_start)
-        self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.navigation.on_drag_end)
+        self.canvas.bind("<ButtonPress-1>", self.on_canvas_drag_start)
+        self.canvas.bind("<B1-Motion>", self.on_canvas_drag_move)
+        self.canvas.bind("<ButtonRelease-1>", self.on_canvas_drag_end)
 
-    def move_to_position(self, y, x, z):
-        self.position = (y, x, z)
-        # prepare cache:
+    def load_scroll_data_around_position(self):
+        y, x, z = self.position_yxz
         pad = self._scrolldata_cache_pad
-        y, x, z = self.position
         # read data from disk to memory:
         self._scrolldata_cache = (
             self.scrolldata.dset[
@@ -61,9 +60,37 @@ class Scroll3DViewer:
         # make sure it is really loaded into memory:
         print("loaded data with mean value:", self._scrolldata_cache.mean())
 
-    def on_canvas_drag(self, event):
+    def on_canvas_drag_start(self, event):
+        self.navigation.on_drag_start(event)
+
+    def on_canvas_drag_move(self, event):
         self.navigation.on_drag_move(event)
         self.update_canvas()
+
+    def on_canvas_drag_end(self, event):
+        self.navigation.on_drag_end(event)
+
+        # calculate where we want to move in 3D, given the drag in canvas positions:
+        if self.navigation.move_x != 0 or self.navigation.move_x != 0:
+            print(self.position_yxz)
+            drag_move_vector = np.array([self.navigation.move_y, self.navigation.move_x, 0])
+            inverse_rotation_matrix = np.linalg.inv(self.navigation.rotation_matrix[:3, :3])
+            move_3d = inverse_rotation_matrix @ drag_move_vector
+            print(move_3d)
+            self.position_yxz = [
+                round(self.position_yxz[0] + move_3d[0]),
+                round(self.position_yxz[1] + move_3d[1]),
+                round(self.position_yxz[2] + move_3d[2]),
+            ]
+            print(self.position_yxz)
+
+            # load the data around there:
+            self.load_scroll_data_around_position()
+
+            # then reset the drag move - we are at the center again:
+            self.navigation.reset_position()
+
+            self.update_canvas()
 
     def update_canvas(self):
         if self._scrolldata_cache is None:
@@ -81,17 +108,17 @@ class Scroll3DViewer:
         # when moving back, we only move so that output_shape will take care of cutting the correct matrix for us
         unshift = np.array(
             [
-                [1, 0, 0, -self.canvas_pad],
-                [0, 1, 0, -self.canvas_pad],
+                [1, 0, 0, -self.canvas_pad + self.navigation.move_y],
+                [0, 1, 0, -self.canvas_pad + self.navigation.move_x],
                 [0, 0, 1, 0],  # our z dimension is of size 1, no moving back after rotation
                 [0, 0, 0, 1],
             ]
         )
 
         output_shape = np.array([2*self.canvas_pad + 1, 2*self.canvas_pad + 1, 1])
-        M = shift @ self.navigation.rotation_matrix @ unshift
+        self._canvas_display_matrix = shift @ self.navigation.rotation_matrix @ unshift
         # note that using order > 1 makes affine transformation quite slow
-        a = scipy.ndimage.affine_transform(self._scrolldata_cache, M, output_shape=output_shape, order=1)[:, :, 0]
+        a = scipy.ndimage.affine_transform(self._scrolldata_cache, self._canvas_display_matrix, output_shape=output_shape, order=1)[:, :, 0]
         img = Image.fromarray(a).convert("RGBA")
 
         self._canvas_photoimg = ImageTk.PhotoImage(image=img)  # save to instance var so that it is not garbage collected
