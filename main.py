@@ -18,7 +18,15 @@ class Scroll3DViewer:
     canvas_display_matrix = None  # transformation on this data to display it on canvas (contains rotations and translations)
 
     CANVAS_PAD = 150  # padding of the cube when displayed on canvas
-    SCROLLDATA_CACHE_PAD = math.ceil(math.sqrt(3 * CANVAS_PAD**2))  # performance optimization - calculate in advance needed padding when loading scrolldata chunk
+    SCROLLDATA_CACHE_PAD = math.ceil(math.sqrt(3 * CANVAS_PAD**2))  # performance optimization - calculate in advance padding needed when loading scrolldata chunk
+    SHIFT_TO_SCROLLDATA_LOADED_CENTER = np.array(
+        [
+            [1, 0, 0, SCROLLDATA_CACHE_PAD],
+            [0, 1, 0, SCROLLDATA_CACHE_PAD],
+            [0, 0, 1, SCROLLDATA_CACHE_PAD],
+            [0, 0, 0, 1],
+        ]
+    )
 
     def __init__(self):
         self.parse_args()
@@ -46,6 +54,24 @@ class Scroll3DViewer:
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag_move)
         self.canvas.bind("<ButtonRelease-1>", self.on_canvas_drag_end)
 
+        self.root.bind("<Key>", self.key_handler)
+
+    def key_handler(self, ev):
+        # print(repr(ev.keysym), ev.state)
+
+        # L - load scroll data around position
+        if ev.keysym in ["l"]:
+            # 4x4 matrix canvas_display_matrix transforms out 3D scroll coordinates (from the center of the scroll chunk in memory) into
+            # rotated and translated 3D coordinates which are ready to be shown on canvas. To load data from H5FS dataset, we must:
+            # - find the offset of the new center (which might be dislocated in 3D, not just 2D) using self.canvas_display_matrix
+            # - load new scroll data chunk around previous center + offset
+            # - change self.canvas_display_matrix so that it only contains rotation (no translations)
+            offset = self.canvas_display_matrix @ np.array([0, 0, 0, 1])
+            new_position_yxz = [self.position_yxz[i] + round(offset[i]) for i in range(3)]
+            self.load_scroll_data_around_position(*new_position_yxz)
+            self.update_canvas()
+            return
+
     def load_scroll_data_around_position(self, y, x, z):
         print("loading data around position yxz:", (y, x, z))
         pad = self.SCROLLDATA_CACHE_PAD
@@ -58,24 +84,17 @@ class Scroll3DViewer:
             ]
             / 256
         ).astype(np.uint8)
+        self.position_yxz = (y, x, z)
         # make sure it is really loaded into memory:
         print("loaded data with mean value:", self.scrolldata_loaded.mean())
 
         # calculate initial matrix which translates our scroll data to canvas, together with rotation and translation:
-        shift = np.array(
-            [
-                [1, 0, 0, self.SCROLLDATA_CACHE_PAD],
-                [0, 1, 0, self.SCROLLDATA_CACHE_PAD],
-                [0, 0, 1, self.SCROLLDATA_CACHE_PAD],
-                [0, 0, 0, 1],
-            ]
-        )
         # keep rotation, whatever it was (identity when we start), but reset translation:
         R = self.canvas_display_matrix
         R[:, 3] = 0
         R[3, :] = 0
         R[3, 3] = 1
-        self.canvas_display_matrix = shift @ R  # note that we do not unshift - we do that just before we display the canvas, because we might be doing some more rotations before
+        self.canvas_display_matrix = R  # note that we do not unshift - we do that just before we display the canvas, because we might be doing some more rotations before
 
     def on_canvas_drag_start(self, event):
         self.navigation.on_drag_start(event)
@@ -85,6 +104,7 @@ class Scroll3DViewer:
         self.update_canvas()
 
     def on_canvas_drag_end(self, event):
+        # now that the drag is over, roll up its transformation matrix into our display matrix:
         self.canvas_display_matrix = self.canvas_display_matrix @ self.navigation.transformation_matrix
 
         self.navigation.on_drag_end(event)
@@ -104,9 +124,9 @@ class Scroll3DViewer:
             ]
         )
         if self.navigation.drag_in_progress:
-            M = self.canvas_display_matrix @ self.navigation.transformation_matrix @ unshift
+            M = self.SHIFT_TO_SCROLLDATA_LOADED_CENTER @ self.canvas_display_matrix @ self.navigation.transformation_matrix @ unshift
         else:
-            M = self.canvas_display_matrix @ unshift
+            M = self.SHIFT_TO_SCROLLDATA_LOADED_CENTER @ self.canvas_display_matrix @ unshift
 
         output_shape = np.array([2 * self.CANVAS_PAD + 1, 2 * self.CANVAS_PAD + 1, 1])
         # note that using order > 1 makes affine transformation quite slow
@@ -114,7 +134,7 @@ class Scroll3DViewer:
         img = Image.fromarray(a).convert("RGBA")
 
         self._canvas_photoimg = ImageTk.PhotoImage(image=img)  # save to instance var so that it is not garbage collected
-        self.canvas.create_image(5, 5, anchor=tk.NW, image=self._canvas_photoimg)
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self._canvas_photoimg)
 
         # crosshair:
         pw, ph = self.CANVAS_PAD, self.CANVAS_PAD
