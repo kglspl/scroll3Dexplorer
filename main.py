@@ -78,6 +78,22 @@ class Scroll3DViewer:
             self.update_canvas()
             return
 
+        # A/S/D - rotate in different directions
+        if ev.keysym in ["a", "s", "d"]:
+            axis = ["a", "s", "d"].index(ev.keysym)
+            self.rotate90(axis)
+            self.update_canvas()
+            return
+
+    def rotate90(self, axis):
+        R = np.identity(4)
+        i, j = tuple([a for a in range(3) if a != axis])
+        R[i, i] = 0  # cos(90)
+        R[i, j] = 1  # sin(90)
+        R[j, i] = -1  # -sin(90)
+        R[j, j] = 0  # cos(90)
+        self.canvas_display_matrix = self.canvas_display_matrix @ R
+
     def load_scroll_data_around_position(self, y, x, z):
         print("loading data around position yxz:", (y, x, z))
         pad = self.SCROLLDATA_CACHE_PAD
