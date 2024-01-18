@@ -32,7 +32,12 @@ class Scroll3DViewer:
         self.parse_args()
         print(f"Opening scroll data: {self.arguments.h5fs_scroll}")
         self.scrolldata = H5FS(self.arguments.h5fs_scroll, "r").open()
-        initial_position_yxz = list(np.array(self.scrolldata.dset.shape) // 2)  # initial position is in the center of scroll
+        if self.arguments.yxz:
+            initial_position_yxz = [int(p) for p in self.arguments.yxz.split(",")]
+            if len(initial_position_yxz) != 3:
+                raise ("Initial scroll position (--yxz) should have exactly 3 coordinates")
+        else:
+            initial_position_yxz = list(np.array(self.scrolldata.dset.shape) // 2)  # default initial position is in the center of scroll
         self.canvas_display_matrix = np.identity(4)
         self.init_ui()
         self.load_scroll_data_around_position(*initial_position_yxz)
@@ -40,6 +45,7 @@ class Scroll3DViewer:
     def parse_args(self):
         argparser = argparse.ArgumentParser(usage="%(prog)s [OPTION]...", description="3D viewer for Vesuvius Challenge scroll data.")
         argparser.add_argument("--h5fs-scroll", help="full path to scroll H5FS (.h5) file; the first dataset there will be used", required=True)
+        argparser.add_argument("--yxz", help="initial position, comma separated values; uses central position by default", required=True)
         self.arguments = argparser.parse_args()
 
     def init_ui(self):
