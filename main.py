@@ -93,7 +93,7 @@ class Scroll3DViewer:
 
         # L - load scroll data around position
         if ev.keysym in ["l"]:
-            # 4x4 matrix canvas_display_matrix transforms out 3D scroll coordinates (from the center of the scroll chunk in memory) into
+            # 4x4 matrix canvas_display_matrix transforms our 3D scroll coordinates (from the center of the scroll chunk in memory) into
             # rotated and translated 3D coordinates which are ready to be shown on canvas. To load data from H5FS dataset, we must:
             # - find the offset of the new center (which might be dislocated in 3D, not just 2D) using self.canvas_display_matrix
             # - load new scroll data chunk around previous center + offset
