@@ -18,7 +18,9 @@ class Scroll3DViewer:
     canvas_display_matrix = None  # transformation on this data to display it on canvas (contains rotations and translations)
 
     _canvas_3d_photoimgs = None
+    _after_handle = None
 
+    ANIMATION_DELAY = 10
     CANVAS_PAD = 150  # padding of the cube when displayed on canvas
     SCROLLDATA_CACHE_PAD = math.ceil(math.sqrt(3 * CANVAS_PAD**2))  # performance optimization - calculate in advance padding needed when loading scrolldata chunk
     SHIFT_TO_SCROLLDATA_LOADED_CENTER = np.array(
@@ -43,8 +45,8 @@ class Scroll3DViewer:
         self.canvas_display_matrix = np.identity(4)
         self.init_ui()
         self.load_scroll_data_around_position(*initial_position_yxz)
-        self.update_canvas()
-        self.update_nav3d_display()
+        # we don't update canvases on every change, instead we update them animation style for performance reasons
+        self.root.after(self.ANIMATION_DELAY, self.animate)
 
     def parse_args(self):
         argparser = argparse.ArgumentParser(usage="%(prog)s [OPTION]...", description="3D viewer for Vesuvius Challenge scroll data.")
@@ -94,16 +96,12 @@ class Scroll3DViewer:
             # - change self.canvas_display_matrix so that it only contains rotation (no translations)
             y, x, z = self.get_current_position()
             self.load_scroll_data_around_position(y, x, z)
-            self.update_canvas()
-            self.update_nav3d_display()
             return
 
         # A/S/D - rotate in different directions
         if ev.keysym in ["a", "s", "d"]:
             axis = ["a", "s", "d"].index(ev.keysym)
             self.rotate90(axis)
-            self.update_canvas()
-            self.update_nav3d_display()
             return
 
     def get_current_position(self):
@@ -149,14 +147,18 @@ class Scroll3DViewer:
 
     def on_canvas_drag_move(self, event):
         self.navigation.on_drag_move(event)
-        self.update_canvas()
-        self.update_nav3d_display()
 
     def on_canvas_drag_end(self, event):
         # now that the drag is over, roll up its transformation matrix into our display matrix:
         self.canvas_display_matrix = self.canvas_display_matrix @ self.navigation.transformation_matrix
 
         self.navigation.on_drag_end(event)
+
+    def animate(self):
+        self._after_handle = None
+        self.update_canvas()
+        self.update_nav3d_display()
+        self._after_handle = self.root.after(self.ANIMATION_DELAY, self.animate)
 
     def update_canvas(self):
         if self.scrolldata_loaded is None:
@@ -247,6 +249,8 @@ class Scroll3DViewer:
         self.canvas_y.pack(fill=tk.BOTH, expand=True)
 
     def on_exit(self):
+        if self._after_handle:
+            self.root.after_cancel(self._after_handle)
         print("Closing scroll data.")
         self.scrolldata.close()
 
