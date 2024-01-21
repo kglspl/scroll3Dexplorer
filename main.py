@@ -57,7 +57,7 @@ class Scroll3DViewer:
 
     def init_ui(self):
         self.root = tk.Tk()
-        # self.root.attributes("-zoomed", True)
+        self.root.attributes("-zoomed", True)
         self.root.title("Scroll 3D Viewer")
 
         self.center_frame = tk.Frame(self.root, bg="white")
@@ -173,11 +173,13 @@ class Scroll3DViewer:
             print("scrolldata_loaded is not set, aborting")
             return
 
+        pw, ph = self.canvas.winfo_width() // 2, self.canvas.winfo_height() // 2
+
         # when moving back, we only move so that output_shape will take care of cutting the correct matrix for us
         unshift = np.array(
             [
-                [1, 0, 0, -self.CANVAS_PAD],
-                [0, 1, 0, -self.CANVAS_PAD],
+                [1, 0, 0, -ph],
+                [0, 1, 0, -pw],
                 [0, 0, 1, 0],  # our z dimension is of size 1, no moving back after rotation
                 [0, 0, 0, 1],
             ]
@@ -187,7 +189,7 @@ class Scroll3DViewer:
         else:
             M = self.SHIFT_TO_SCROLLDATA_LOADED_CENTER @ self.canvas_display_matrix @ unshift
 
-        output_shape = np.array([2 * self.CANVAS_PAD + 1, 2 * self.CANVAS_PAD + 1, 1])
+        output_shape = np.array([2 * ph + 1, 2 * pw + 1, 1])
         # note that using order > 1 makes affine transformation quite slow
         a = scipy.ndimage.affine_transform(self.scrolldata_loaded, M, output_shape=output_shape, order=1)[:, :, 0]
         img = Image.fromarray(a).convert("RGBA")
@@ -196,7 +198,6 @@ class Scroll3DViewer:
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self._canvas_photoimg)
 
         # crosshair:
-        pw, ph = self.CANVAS_PAD, self.CANVAS_PAD
         self.canvas.create_line((pw - 10, ph), (pw + 10, ph), width=1, fill="red")
         self.canvas.create_line((pw, ph - 10), (pw, ph + 10), width=1, fill="red")
 
