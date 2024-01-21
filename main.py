@@ -18,7 +18,7 @@ class Scroll3DViewer:
     canvas_display_matrix = None  # transformation on this data to display it on canvas (contains rotations and translations)
 
     _canvas_3d_photoimgs = None
-    _after_handle = None
+    _window_close_requested = False
 
     ANIMATION_DELAY = 10
     CANVAS_PAD = 150  # padding of the cube when displayed on canvas
@@ -44,6 +44,7 @@ class Scroll3DViewer:
             initial_position_yxz = list(np.array(self.scrolldata.dset.shape) // 2)  # default initial position is in the center of scroll
         self.canvas_display_matrix = np.identity(4)
         self.init_ui()
+        self.root.protocol("WM_DELETE_WINDOW", self.request_window_close)
         self.load_scroll_data_around_position(*initial_position_yxz)
         # we don't update canvases on every change, instead we update them animation style for performance reasons
         self.root.after(self.ANIMATION_DELAY, self.animate)
@@ -83,6 +84,9 @@ class Scroll3DViewer:
         self.canvas.bind("<ButtonRelease-1>", self.on_canvas_drag_end)
 
         self.root.bind("<Key>", self.key_handler)
+
+    def request_window_close(self):
+        self._window_close_requested = True
 
     def key_handler(self, ev):
         # print(repr(ev.keysym), ev.state)
@@ -155,10 +159,14 @@ class Scroll3DViewer:
         self.navigation.on_drag_end(event)
 
     def animate(self):
-        self._after_handle = None
         self.update_canvas()
         self.update_nav3d_display()
-        self._after_handle = self.root.after(self.ANIMATION_DELAY, self.animate)
+
+        if self._window_close_requested:
+            self.before_exit()
+            self.root.destroy()
+        else:
+            self.root.after(self.ANIMATION_DELAY, self.animate)
 
     def update_canvas(self):
         if self.scrolldata_loaded is None:
@@ -248,17 +256,12 @@ class Scroll3DViewer:
         self.canvas_x.pack(fill=tk.BOTH, expand=True)
         self.canvas_y.pack(fill=tk.BOTH, expand=True)
 
-    def on_exit(self):
-        if self._after_handle:
-            self.root.after_cancel(self._after_handle)
+    def before_exit(self):
         print("Closing scroll data.")
         self.scrolldata.close()
 
     def run(self):
-        try:
-            self.root.mainloop()
-        finally:
-            self.on_exit()
+        self.root.mainloop()
 
 
 if __name__ == "__main__":
