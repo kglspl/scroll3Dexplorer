@@ -82,6 +82,10 @@ class Scroll3DViewer:
         self.canvas.bind("<ButtonPress-1>", self.on_canvas_drag_start)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag_move)
         self.canvas.bind("<ButtonRelease-1>", self.on_canvas_drag_end)
+        self.canvas.bind("<MouseWheel>", self.on_scroll)
+        # On Linux, Button-4 is scroll up and Button-5 is scroll down
+        self.canvas.bind("<Button-4>", self.on_scroll)
+        self.canvas.bind("<Button-5>", self.on_scroll)
 
         self.root.bind("<Key>", self.key_handler)
 
@@ -157,6 +161,12 @@ class Scroll3DViewer:
         self.canvas_display_matrix = self.canvas_display_matrix @ self.navigation.transformation_matrix
 
         self.navigation.on_drag_end(event)
+
+    def on_scroll(self, event):
+        ctrl_pressed = event.state & 4
+        delta = 1 if event.num == 4 else -1
+        if ctrl_pressed:
+            self.zoom(delta)
 
     def animate(self):
         self.update_canvas()
@@ -256,6 +266,18 @@ class Scroll3DViewer:
         self.canvas_z.pack(fill=tk.BOTH, expand=True)
         self.canvas_x.pack(fill=tk.BOTH, expand=True)
         self.canvas_y.pack(fill=tk.BOTH, expand=True)
+
+    def zoom(self, delta):
+        scale = 1.1 if delta < 0 else 1 / 1.1
+        M = np.array(
+            [
+                [scale, 0, 0, 0],
+                [0, scale, 0, 0],
+                [0, 0, scale, 0],
+                [0, 0, 0, 1],
+            ]
+        )
+        self.canvas_display_matrix = self.canvas_display_matrix @ M
 
     def before_exit(self):
         print("Closing scroll data.")
