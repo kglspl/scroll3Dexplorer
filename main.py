@@ -163,10 +163,13 @@ class Scroll3DViewer:
         self.navigation.on_drag_end(event)
 
     def on_scroll(self, event):
-        ctrl_pressed = event.state & 4
+        ctrl_pressed = event.state & 0x04
+        alt_pressed = (event.state & 0x08) or (event.state & 0x80)
         delta = 1 if event.num == 4 else -1
         if ctrl_pressed:
             self.zoom(delta)
+        elif alt_pressed:
+            self.rotate_sideways(delta)
         else:
             self.move_in_out(delta)
 
@@ -287,6 +290,19 @@ class Scroll3DViewer:
                 [1, 0, 0, 0],
                 [0, 1, 0, 0],
                 [0, 0, 1, delta],
+                [0, 0, 0, 1],
+            ]
+        )
+        self.canvas_display_matrix = self.canvas_display_matrix @ M
+
+    def rotate_sideways(self, delta):
+        fi = delta * math.pi / 180
+        cos_fi, sin_fi = math.cos(fi), math.sin(fi)
+        M = np.array(
+            [
+                [cos_fi, sin_fi, 0, 0],
+                [-sin_fi, cos_fi, 0, 0],
+                [0, 0, 1, 0],
                 [0, 0, 0, 1],
             ]
         )
