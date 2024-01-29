@@ -167,6 +167,8 @@ class Scroll3DViewer:
         delta = 1 if event.num == 4 else -1
         if ctrl_pressed:
             self.zoom(delta)
+        else:
+            self.move_in_out(delta)
 
     def animate(self):
         self.update_canvas()
@@ -274,6 +276,17 @@ class Scroll3DViewer:
                 [scale, 0, 0, 0],
                 [0, scale, 0, 0],
                 [0, 0, scale, 0],
+                [0, 0, 0, 1],
+            ]
+        )
+        self.canvas_display_matrix = self.canvas_display_matrix @ M
+
+    def move_in_out(self, delta):
+        M = np.array(
+            [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, delta],
                 [0, 0, 0, 1],
             ]
         )
