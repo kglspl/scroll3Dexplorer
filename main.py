@@ -136,8 +136,7 @@ class Scroll3DViewer:
                 x - pad : x + pad + 1,
                 z - pad : z + pad + 1,
             ]
-            / 256
-        ).astype(np.uint8)
+        ).astype(np.uint16)
         self.position_yxz = (y, x, z)
         # make sure it is really loaded into memory:
         print("loaded data with mean value:", self.scrolldata_loaded.mean())
@@ -207,6 +206,7 @@ class Scroll3DViewer:
         output_shape = np.array([2 * ph + 1, 2 * pw + 1, 1])
         # note that using order > 1 makes affine transformation quite slow
         a = scipy.ndimage.affine_transform(self.scrolldata_loaded, M, output_shape=output_shape, order=1)[:, :, 0]
+        a = (a / 256).astype(np.uint8)
         img = Image.fromarray(a).convert("RGBA")
 
         self._canvas_photoimg = ImageTk.PhotoImage(image=img)  # save to instance var so that it is not garbage collected
