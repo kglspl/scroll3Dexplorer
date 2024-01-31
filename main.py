@@ -17,6 +17,8 @@ class Scroll3DViewer:
     scrolldata_loaded = None  # chunk of data which is loaded into memory
     canvas_display_matrix = None  # transformation on this data to display it on canvas (contains rotations and translations)
 
+    color_clip = None  # example: [150 * 256, 200 * 256]
+
     _canvas_3d_photoimgs = None
     _window_close_requested = False
 
@@ -206,6 +208,9 @@ class Scroll3DViewer:
         output_shape = np.array([2 * ph + 1, 2 * pw + 1, 1])
         # note that using order > 1 makes affine transformation quite slow
         a = scipy.ndimage.affine_transform(self.scrolldata_loaded, M, output_shape=output_shape, order=1)[:, :, 0]
+
+        a = self.adjust_colorspace(a)
+
         a = (a / 256).astype(np.uint8)
         img = Image.fromarray(a).convert("RGBA")
 
@@ -271,6 +276,14 @@ class Scroll3DViewer:
         self.canvas_z.pack(fill=tk.BOTH, expand=True)
         self.canvas_x.pack(fill=tk.BOTH, expand=True)
         self.canvas_y.pack(fill=tk.BOTH, expand=True)
+
+    def adjust_colorspace(self, a):
+        if self.color_clip:
+            min_, max_ = self.color_clip
+            a[a < min_] = min_
+            a[a > max_] = max_
+            a = (a - min_) * (0xffff / (max_ - min_))
+        return a
 
     def zoom(self, delta):
         scale = 1.1 if delta < 0 else 1 / 1.1
