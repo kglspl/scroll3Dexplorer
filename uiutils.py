@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 
-class Navigation:
+class Drag:
     transformation_matrix = None
     drag_in_progress = False
 

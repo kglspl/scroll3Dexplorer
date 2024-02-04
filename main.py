@@ -7,12 +7,12 @@ import scipy
 import tkinter as tk
 
 from h5fsutil import H5FS
-from uiutils import Navigation
+from uiutils import Drag
 
 
 class Scroll3DViewer:
     arguments = None
-    navigation = Navigation()
+    drag = Drag()
     scrolldata = None  # H5FS instance which gives us access to dataset
     scrolldata_loaded = None  # chunk of data which is loaded into memory
     canvas_display_matrix = None  # transformation on this data to display it on canvas (contains rotations and translations)
@@ -152,16 +152,16 @@ class Scroll3DViewer:
         self.canvas_display_matrix = R  # note that we do not unshift - we do that just before we display the canvas, because we might be doing some more rotations before
 
     def on_canvas_drag_start(self, event):
-        self.navigation.on_drag_start(event)
+        self.drag.on_drag_start(event)
 
     def on_canvas_drag_move(self, event):
-        self.navigation.on_drag_move(event)
+        self.drag.on_drag_move(event)
 
     def on_canvas_drag_end(self, event):
         # now that the drag is over, roll up its transformation matrix into our display matrix:
-        self.canvas_display_matrix = self.canvas_display_matrix @ self.navigation.transformation_matrix
+        self.canvas_display_matrix = self.canvas_display_matrix @ self.drag.transformation_matrix
 
-        self.navigation.on_drag_end(event)
+        self.drag.on_drag_end(event)
 
     def on_scroll(self, event):
         ctrl_pressed = event.state & 0x04
@@ -200,8 +200,8 @@ class Scroll3DViewer:
                 [0, 0, 0, 1],
             ]
         )
-        if self.navigation.drag_in_progress:
-            M = self.SHIFT_TO_SCROLLDATA_LOADED_CENTER @ self.canvas_display_matrix @ self.navigation.transformation_matrix @ unshift
+        if self.drag.drag_in_progress:
+            M = self.SHIFT_TO_SCROLLDATA_LOADED_CENTER @ self.canvas_display_matrix @ self.drag.transformation_matrix @ unshift
         else:
             M = self.SHIFT_TO_SCROLLDATA_LOADED_CENTER @ self.canvas_display_matrix @ unshift
 
