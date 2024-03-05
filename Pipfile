@@ -9,6 +9,8 @@ tk = "*"
 h5py = "*"
 scipy = "*"
 pillow = "*"
+requests = "*"
+urllib3 = "<2"
 
 [dev-packages]
 black = "*"
