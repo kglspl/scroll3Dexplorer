@@ -4,11 +4,11 @@ import math
 import os
 import time
 
+import h5py
 import numpy as np
 import requests
+from scipy import ndimage
 from skimage import io
-
-from h5fsutil import H5FS
 
 
 class Actions(str, enum.Enum):
@@ -19,6 +19,11 @@ class Actions(str, enum.Enum):
 
 
 class ScrollDataDownloader:
+    SCROLL_MULTIZOOM_LEVELS = [
+        (None, "scroll"),
+        (2, "scroll_scale_2"),
+        (4, "scroll_scale_4"),
+    ]
     r = None
     allow_downloading = False
     apply_if_downloaded = False
@@ -105,12 +110,13 @@ class ScrollDataDownloader:
         print(f"ROI: x: {x0}-{x1}, y: {y0}-{y1}, z: {z0}-{z1}")
         try:
             if self.apply_if_downloaded or self.apply_always:
-                h5fs_scroll_exists = os.path.exists(self.h5fs_scroll)
-                f = H5FS(self.h5fs_scroll, "a")
-                if h5fs_scroll_exists:
-                    dset = f.open().dset
-                else:
-                    dset = f.require_dataset("scroll", shape=self.h5fs_scroll_shape, dtype=np.uint16, chunks=(250, 250, 250))
+                f = h5py.File(self.h5fs_scroll, "a")
+                dsets = []
+                for scale, dataset_name in self.SCROLL_MULTIZOOM_LEVELS:
+                    shape = self.h5fs_scroll_shape if scale is None else tuple(math.ceil(s / scale) for s in self.h5fs_scroll_shape)
+                    print(f"  Opening dataset for scale {scale}, shape: {shape}")
+                    dset = f.require_dataset(dataset_name, shape=shape, dtype=np.uint16, chunks=(250, 250, 250))
+                    dsets.append(dset)
 
             total_count = (math.ceil(y1 / 500.0) - y0 // 500) * (math.ceil(x1 / 500.0) - x0 // 500) * (math.ceil(z1 / 500.0) - z0 // 500)
             print(f"Total count: {total_count}")
@@ -131,8 +137,21 @@ class ScrollDataDownloader:
                             a = io.imread(filename)
                             print(f"Transposing")
                             a = np.transpose(a, (1, 2, 0))  # change the axes so that we have y, h, x, the same as elsewhere
-                            print(f"Writing")
-                            dset[y * 500 : (y + 1) * 500, x * 500 : (x + 1) * 500, z * 500 : (z + 1) * 500] = a
+
+                            for i, (scale, _) in enumerate(self.SCROLL_MULTIZOOM_LEVELS):
+                                print(f"Writing zoom {'1' if scale is None else '1/' + str(scale)}")
+                                dset = dsets[i]
+                                if scale is None:
+                                    zoomed_a = a
+                                    y0, x0, z0 = (int(d * 500) for d in (y, x, z))
+                                else:
+                                    zoomed_a = ndimage.zoom(a, 1 / scale)
+                                    y0, x0, z0 = (math.floor((d * 500) / scale) for d in (y, x, z))
+                                dset[
+                                    y0 : y0 + zoomed_a.shape[0],
+                                    x0 : x0 + zoomed_a.shape[1],
+                                    z0 : z0 + zoomed_a.shape[2],
+                                ] = zoomed_a
                         print(f"Done y={y},x={x},z={z}, {count} / {total_count}\n")
                         count += 1
             print("Done.")
