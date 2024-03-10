@@ -110,7 +110,7 @@ class ScrollDataDownloader:
                 if h5fs_scroll_exists:
                     dset = f.open().dset
                 else:
-                    dset = H5FS(self.h5fs_scroll, "a").require_dataset("scroll", shape=self.h5fs_scroll_shape, dtype=np.uint16, chunks=(250, 250, 250))
+                    dset = f.require_dataset("scroll", shape=self.h5fs_scroll_shape, dtype=np.uint16, chunks=(250, 250, 250))
 
             total_count = (math.ceil(y1 / 500.0) - y0 // 500) * (math.ceil(x1 / 500.0) - x0 // 500) * (math.ceil(z1 / 500.0) - z0 // 500)
             print(f"Total count: {total_count}")
