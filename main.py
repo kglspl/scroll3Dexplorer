@@ -11,6 +11,12 @@ from uiutils import Drag
 
 
 class Scroll3DViewer:
+    SCROLL_MULTIZOOM_LEVELS = [
+        (None, "scroll"),
+        (2, "scroll_scale_2"),
+        (4, "scroll_scale_4"),
+    ]
+
     arguments = None
     drag = Drag()
     scrolldata = None  # H5FS instance which gives us access to dataset
@@ -37,7 +43,7 @@ class Scroll3DViewer:
     def __init__(self):
         self.parse_args()
         print(f"Opening scroll data: {self.arguments.h5fs_scroll}")
-        self.scrolldata = H5FS(self.arguments.h5fs_scroll, "r").open()
+        self.scrolldata = H5FS(self.arguments.h5fs_scroll, "r")
 
         initial_position_yxz = [int(p) for p in self.arguments.yxz.split(",")]
         if len(initial_position_yxz) != 3:
@@ -139,21 +145,36 @@ class Scroll3DViewer:
         R[j, j] = 0  # cos(90)
         self.canvas_display_matrix = self.canvas_display_matrix @ R
 
+    def _select_multizoom_level(self, zoom):
+        # find the appropriate dataset given the currently selected zoom level
+        for dataset_scale, dataset_name in reversed(self.SCROLL_MULTIZOOM_LEVELS[1:]):
+            if dataset_scale <= 1 / zoom:
+                return dataset_scale, dataset_name
+        return self.SCROLL_MULTIZOOM_LEVELS[0]
+
     def load_scroll_data_around_current_position(self):
         y, x, z = self.get_current_position()
-        print("loading data around position yxz:", (y, x, z))
+        zoom = self.get_current_zoom()
+
+        dataset_scale, dataset_name = self._select_multizoom_level(zoom)
+        print(f"loading data around position yxz: {(y, x, z)}, zoom: {zoom}, using data scale: {dataset_scale} from dataset: {dataset_name}")
+
+        dset = self.scrolldata.open(dataset_name).dset
+        yC, xC, zC = (y, x, z) if dataset_scale is None else (round(y / dataset_scale), round(x / dataset_scale), round(z / dataset_scale))
+
         pad = self.SCROLLDATA_CACHE_PAD
         # read data from disk to memory:
         self.scrolldata_loaded = (
-            self.scrolldata.dset[
-                y - pad : y + pad + 1,
-                x - pad : x + pad + 1,
-                z - pad : z + pad + 1,
+            dset[
+                yC - pad : yC + pad + 1,
+                xC - pad : xC + pad + 1,
+                zC - pad : zC + pad + 1,
             ]
         ).astype(np.uint16)
+        # position_yxz is the position of the center of loaded cube in default zoom level, so when we load a new cube, we must update it:
         self.position_yxz = (y, x, z)
         # make sure it is really loaded into memory:
-        print("loaded data with mean value:", self.scrolldata_loaded.mean())
+        print("  loaded data with mean value:", self.scrolldata_loaded.mean())
 
         # calculate initial matrix which translates our scroll data to canvas, together with rotation and translation:
         # keep rotation, whatever it was (identity when we start), but reset translation:
