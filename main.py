@@ -48,7 +48,7 @@ class Scroll3DViewer:
 
         if self.arguments.zoom:
             self.canvas_display_matrix /= float(self.arguments.zoom)
-            self.canvas_display_matrix[3, 3] = 1.
+            self.canvas_display_matrix[3, 3] = 1.0
 
         self.init_ui()
         self.root.protocol("WM_DELETE_WINDOW", self.request_window_close)
@@ -128,7 +128,7 @@ class Scroll3DViewer:
         return new_position_yxz
 
     def get_current_zoom(self):
-        return 1. / self.canvas_display_matrix[0, 0]
+        return 1.0 / self.canvas_display_matrix[0, 0]
 
     def rotate90(self, axis):
         R = np.identity(4)
@@ -297,7 +297,7 @@ class Scroll3DViewer:
             min_, max_ = self.color_clip
             a[a < min_] = min_
             a[a > max_] = max_
-            a = (a - min_) * (0xffff / (max_ - min_))
+            a = (a - min_) * (0xFFFF / (max_ - min_))
         return a
 
     def zoom(self, delta):
