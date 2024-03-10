@@ -81,6 +81,9 @@ class Scroll3DViewer:
         self.canvas = tk.Canvas(self.center_frame, bg="white")
         self.canvas.pack(fill="both", expand=True)
 
+        current_zoom_level = self.get_current_zoom()
+        self.zoom_level_text = self.canvas.create_text(10, 10, anchor=tk.NW, text=f"Zoom: {current_zoom_level:.2f}", fill="red", font=("Helvetica", 15, "bold"))
+
         self.canvas.bind("<ButtonPress-1>", self.on_canvas_drag_start)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag_move)
         self.canvas.bind("<ButtonRelease-1>", self.on_canvas_drag_end)
@@ -118,6 +121,9 @@ class Scroll3DViewer:
         offset = self.canvas_display_matrix @ np.array([0, 0, 0, 1])
         new_position_yxz = (self.position_yxz[i] + round(offset[i]) for i in range(3))
         return new_position_yxz
+
+    def get_current_zoom(self):
+        return 1. / self.canvas_display_matrix[0, 0]
 
     def rotate90(self, axis):
         R = np.identity(4)
@@ -221,6 +227,9 @@ class Scroll3DViewer:
         self.canvas.create_line((pw - 10, ph), (pw + 10, ph), width=1, fill="red")
         self.canvas.create_line((pw, ph - 10), (pw, ph + 10), width=1, fill="red")
 
+        # raise all texts:
+        self.canvas.tag_raise(self.zoom_level_text)
+
     def update_nav3d_display(self):
         scroll_y, scroll_x, scroll_z = self.get_current_position()
 
@@ -296,6 +305,9 @@ class Scroll3DViewer:
             ]
         )
         self.canvas_display_matrix = self.canvas_display_matrix @ M
+        # update label:
+        current_zoom_level = self.get_current_zoom()
+        self.canvas.itemconfigure(self.zoom_level_text, text=f"Zoom: {current_zoom_level:.2f}")
 
     def move_in_out(self, delta):
         M = np.array(
