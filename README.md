@@ -58,6 +58,8 @@ Note that data takes a lot of disk space (explore the original files to get a fe
 
 The dimensions when creating a new H5FS file must be specified through `--scroll-size-xyz` parameter. They can be obtained from scroll data, from `volumes/meta.json` file (width/height/slices).
 
+The reason for split `download` and `apply` actions is that H5FS file can't be written to while there is a process reading from it. These two actions allow downloading the data in background, while using the explorer app at the same time. Once the data is downloaded `apply` can be used to apply all the data in the selected region of interest.
+
 ## License
 
 MIT License
