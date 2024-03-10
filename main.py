@@ -39,12 +39,10 @@ class Scroll3DViewer:
         print(f"Opening scroll data: {self.arguments.h5fs_scroll}")
         self.scrolldata = H5FS(self.arguments.h5fs_scroll, "r").open()
 
-        if self.arguments.yxz:
-            initial_position_yxz = [int(p) for p in self.arguments.yxz.split(",")]
-            if len(initial_position_yxz) != 3:
-                raise ("Initial scroll position (--yxz) should have exactly 3 coordinates")
-        else:
-            initial_position_yxz = list(np.array(self.scrolldata.dset.shape) // 2)  # default initial position is in the center of scroll
+        initial_position_yxz = [int(p) for p in self.arguments.yxz.split(",")]
+        if len(initial_position_yxz) != 3:
+            raise ("Initial scroll position (--yxz) should have exactly 3 coordinates")
+        self.position_yxz = initial_position_yxz
 
         self.canvas_display_matrix = np.identity(4)
 
@@ -54,7 +52,7 @@ class Scroll3DViewer:
 
         self.init_ui()
         self.root.protocol("WM_DELETE_WINDOW", self.request_window_close)
-        self.load_scroll_data_around_position(*initial_position_yxz)
+        self.load_scroll_data_around_current_position()
         # we don't update canvases on every change, instead we update them animation style for performance reasons
         self.root.after(self.ANIMATION_DELAY, self.animate)
 
@@ -115,8 +113,7 @@ class Scroll3DViewer:
             # - find the offset of the new center (which might be dislocated in 3D, not just 2D) using self.canvas_display_matrix
             # - load new scroll data chunk around previous center + offset
             # - change self.canvas_display_matrix so that it only contains rotation (no translations)
-            y, x, z = self.get_current_position()
-            self.load_scroll_data_around_position(y, x, z)
+            self.load_scroll_data_around_current_position()
             return
 
         # A/S/D - rotate in different directions
@@ -142,7 +139,8 @@ class Scroll3DViewer:
         R[j, j] = 0  # cos(90)
         self.canvas_display_matrix = self.canvas_display_matrix @ R
 
-    def load_scroll_data_around_position(self, y, x, z):
+    def load_scroll_data_around_current_position(self):
+        y, x, z = self.get_current_position()
         print("loading data around position yxz:", (y, x, z))
         pad = self.SCROLLDATA_CACHE_PAD
         # read data from disk to memory:
