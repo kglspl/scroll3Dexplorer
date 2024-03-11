@@ -28,11 +28,11 @@ class H5FS(object):
 
         if type(obj) in [h5py._hl.group.Group, h5py._hl.files.File]:
             for key in obj.keys():
-                result = self._h5_get_dataset_info(obj=obj[key])
+                result = self._h5_get_dataset_info(requested_name=requested_name, obj=obj[key])
                 if result is not None:
                     return result
         elif type(obj) == h5py._hl.dataset.Dataset:
-            if requested_name is None or obj.name == requested_name:
+            if requested_name is None or obj.name.split('/')[-1] == requested_name:
                 return {
                     "name": obj.name,
                     "shape": obj.shape,
