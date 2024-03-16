@@ -161,6 +161,7 @@ class Scroll3DViewer:
 
         dset = self.scrolldata.open(dataset_name).dset
         yC, xC, zC = (y, x, z) if dataset_scale is None else (round(y / dataset_scale), round(x / dataset_scale), round(z / dataset_scale))
+        print(f"scaled position yxz: {(yC, xC, zC)}")
 
         pad = self.SCROLLDATA_CACHE_PAD
         # read data from disk to memory:
@@ -259,17 +260,20 @@ class Scroll3DViewer:
 
     def update_nav3d_display(self):
         scroll_y, scroll_x, scroll_z = self.get_current_position()
+        zoom = self.get_current_zoom()
+        dataset_scale, _ = self._select_multizoom_level(zoom)
+        scroll_yC, scroll_xC, scroll_zC = (scroll_y, scroll_x, scroll_z) if dataset_scale is None else (round(scroll_y / dataset_scale), round(scroll_x / dataset_scale), round(scroll_z / dataset_scale))
 
         imgs = []
         for i, c in enumerate([self.canvas_z, self.canvas_x, self.canvas_y]):
             c.update()  # this is needed to get the real w/h of canvases
             pw, ph = c.winfo_width() // 2, c.winfo_height() // 2
             if i == 0:
-                img_data = (self.scrolldata.dset[scroll_y - ph : scroll_y + ph, scroll_x - pw : scroll_x + pw, scroll_z] // 256).astype(np.uint8)
+                img_data = (self.scrolldata.dset[scroll_yC - ph : scroll_yC + ph, scroll_xC - pw : scroll_xC + pw, scroll_zC] // 256).astype(np.uint8)
             elif i == 1:
-                img_data = (self.scrolldata.dset[scroll_y - ph : scroll_y + ph, scroll_x, scroll_z - pw : scroll_z + pw] // 256).astype(np.uint8)
+                img_data = (self.scrolldata.dset[scroll_yC - ph : scroll_yC + ph, scroll_xC, scroll_zC - pw : scroll_zC + pw] // 256).astype(np.uint8)
             else:
-                img_data = (self.scrolldata.dset[scroll_y, scroll_x - ph : scroll_x + ph, scroll_z - pw : scroll_z + pw] // 256).astype(np.uint8)
+                img_data = (self.scrolldata.dset[scroll_yC, scroll_xC - ph : scroll_xC + ph, scroll_zC - pw : scroll_zC + pw] // 256).astype(np.uint8)
             img = Image.fromarray(img_data).convert("RGBA")
             imgs.append(img)
 
