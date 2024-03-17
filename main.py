@@ -21,8 +21,10 @@ class Scroll3DViewer:
 
     _canvas_3d_photoimgs = None
     _window_close_requested = False
+    _hide_ui_action_trace_handle = None
 
     ANIMATION_DELAY = 10
+    HIDE_UI_ACTION_TRACE_DELAY = 2000
     CANVAS_PAD = 150  # padding of the cube when displayed on canvas
     SCROLLDATA_CACHE_PAD = math.ceil(math.sqrt(3 * CANVAS_PAD**2))  # performance optimization - calculate in advance padding needed when loading scrolldata chunk
     SHIFT_TO_SCROLLDATA_LOADED_CENTER = np.array(
@@ -89,6 +91,7 @@ class Scroll3DViewer:
 
         current_zoom_level = self.get_current_zoom()
         self.zoom_level_text = self.canvas.create_text(10, 10, anchor=tk.NW, text=f"Zoom: {current_zoom_level:.2f}", fill="red", font=("Helvetica", 15, "bold"))
+        self.ui_action_trace_text = self.canvas.create_text(100, 100, anchor=tk.SE, text="", fill="yellow", font=("Helvetica", 15, "bold"))
 
         self.canvas.bind("<ButtonPress-1>", self.on_canvas_drag_start)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag_move)
@@ -97,17 +100,24 @@ class Scroll3DViewer:
         # On Linux, Button-4 is scroll up and Button-5 is scroll down
         self.canvas.bind("<Button-4>", self.on_scroll)
         self.canvas.bind("<Button-5>", self.on_scroll)
+        self.canvas.bind("<Configure>", self.on_canvas_resize)
 
         self.root.bind("<Key>", self.key_handler)
+
+    def on_canvas_resize(self, event):
+        cw, ch = self.canvas.winfo_width(), self.canvas.winfo_height()
+        self.canvas.moveto(self.ui_action_trace_text, cw - 100, ch - 100)
 
     def request_window_close(self):
         self._window_close_requested = True
 
     def key_handler(self, ev):
         # print(repr(ev.keysym), ev.state)
+        # self.display_ui_action_trace(f'{repr(ev.keysym)}, {ev.state}')
 
         # L - load scroll data around position
         if ev.keysym in ["l"]:
+            self.display_ui_action_trace(f"Key pressed: L (... please wait, loading ...)")
             # 4x4 matrix canvas_display_matrix transforms our 3D scroll coordinates (from the center of the scroll chunk in memory) into
             # rotated and translated 3D coordinates which are ready to be shown on canvas. To load data from H5FS dataset, we must:
             # - find the offset of the new center (which might be dislocated in 3D, not just 2D) using self.canvas_display_matrix
@@ -118,6 +128,7 @@ class Scroll3DViewer:
 
         # A/S/D - rotate in different directions
         if ev.keysym in ["a", "s", "d"]:
+            self.display_ui_action_trace(f"Key pressed: {ev.keysym.upper()}")
             axis = ["a", "s", "d"].index(ev.keysym)
             self.rotate90(axis)
             return
@@ -172,9 +183,11 @@ class Scroll3DViewer:
 
     def on_canvas_drag_start(self, event):
         self.drag.on_drag_start(event)
+        self.display_ui_action_trace(f"Mouse drag{' with ALT' if self.drag._is_alt_pressed(event) else ''}")
 
     def on_canvas_drag_move(self, event):
         self.drag.on_drag_move(event)
+        self.display_ui_action_trace(f"Mouse drag{' with ALT' if self.drag._is_alt_pressed(event) else ''}")
 
     def on_canvas_drag_end(self, event):
         # now that the drag is over, roll up its transformation matrix into our display matrix:
@@ -187,10 +200,13 @@ class Scroll3DViewer:
         alt_pressed = (event.state & 0x08) or (event.state & 0x80)
         delta = 1 if event.num == 4 else -1
         if ctrl_pressed:
+            self.display_ui_action_trace("Mouse scroll with CTRL")
             self.zoom(delta)
         elif alt_pressed:
+            self.display_ui_action_trace("Mouse scroll with ALT")
             self.rotate_sideways(delta)
         else:
+            self.display_ui_action_trace("Mouse scroll")
             self.move_in_out(delta)
 
     def animate(self):
@@ -202,6 +218,19 @@ class Scroll3DViewer:
             self.root.destroy()
         else:
             self.root.after(self.ANIMATION_DELAY, self.animate)
+
+    def display_ui_action_trace(self, message):
+        if self._hide_ui_action_trace_handle:
+            self.root.after_cancel(self._hide_ui_action_trace_handle)
+            self._hide_ui_action_trace_handle = None
+
+        self.canvas.itemconfigure(self.ui_action_trace_text, text=message)
+        self._hide_ui_action_trace_handle = self.root.after(self.HIDE_UI_ACTION_TRACE_DELAY, self._hide_ui_action_trace)
+        self.canvas.update_idletasks()  # display message before performing the action (important when task is slower, like loading data)
+
+    def _hide_ui_action_trace(self):
+        self._hide_ui_action_trace_handle = None
+        self.canvas.itemconfigure(self.ui_action_trace_text, text="")
 
     def update_canvas(self):
         if self.scrolldata_loaded is None:
@@ -242,6 +271,7 @@ class Scroll3DViewer:
 
         # raise all texts:
         self.canvas.tag_raise(self.zoom_level_text)
+        self.canvas.tag_raise(self.ui_action_trace_text)
 
     def update_nav3d_display(self):
         scroll_y, scroll_x, scroll_z = self.get_current_position()
