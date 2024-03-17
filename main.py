@@ -144,14 +144,21 @@ class Scroll3DViewer:
         print("loading data around position yxz:", (y, x, z))
         pad = self.SCROLLDATA_CACHE_PAD
         # read data from disk to memory:
-        self.scrolldata_loaded = (
-            self.scrolldata.dset[
-                y - pad : y + pad + 1,
-                x - pad : x + pad + 1,
-                z - pad : z + pad + 1,
-            ]
-        ).astype(np.uint16)
+        self.scrolldata_loaded = self.scrolldata.dset[
+            y - pad : y + pad + 1,
+            x - pad : x + pad + 1,
+            z - pad : z + pad + 1,
+        ].astype(np.uint16)
         self.position_yxz = (y, x, z)
+
+        # mark the edge of the available data:
+        self.scrolldata_loaded[0, :, :] = 0xFFFF
+        self.scrolldata_loaded[:, 0, :] = 0xFFFF
+        self.scrolldata_loaded[:, :, 0] = 0xFFFF
+        self.scrolldata_loaded[-1, :, :] = 0xFFFF
+        self.scrolldata_loaded[:, -1, :] = 0xFFFF
+        self.scrolldata_loaded[:, :, -1] = 0xFFFF
+
         # make sure it is really loaded into memory:
         print("loaded data with mean value:", self.scrolldata_loaded.mean())
 
