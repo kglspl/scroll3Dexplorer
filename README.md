@@ -25,13 +25,13 @@ App assumes that data exists in a file which is in H5FS format, in the first dat
 
 ### Navigation
 
-Panning: drag the surface
-Moving in/out: mouse scrollwheel
-Rotating: Alt + drag
-Rotating in screen plane: Alt + mouse scrollwheel
-Rotating by 90 degrees: a / s / d
-Zoom in/out: Ctrl + mouse scrollwheel
-Loading data around center point: l
+- Panning: **drag the surface**
+- Moving in/out: **mouse scrollwheel**
+- Rotating: **Alt + drag**
+- Rotating in screen plane: **Alt + mouse scrollwheel**
+- Rotating by 90 degrees: **a / s / d**
+- Zoom in/out: **Ctrl + mouse scrollwheel**
+- Loading data around center point: **l**
 
 ## Downloading data
 
@@ -52,13 +52,13 @@ $ pipenv shell
 
 This will download a single cell from http://dl.ash2txt.org/full-scrolls/Scroll2.volpkg/volume_grids/20230210143520/cell_yxz_006_010_016.tif (as indicated by Region of Interest - `--roi`), create the H5FS file and write the downloaded data to it, in the format which is supported by Scroll3DExplorer out of the box. Note that H5FS files only take as much space as needed so the resulting file will only take about 250MB (but will grow once more data is downloaded and written to it).
 
-The script splits downloading and applying the data into two separate actions, which can be controled through `--actions` parameter. For most cases `download-apply` is sufficient though.
+The script splits downloading and applying the data into two separate actions, which can be controled through `--actions` parameter. For most cases action `download-apply` is sufficient though.
 
-Note that data takes a lot of disk space (explore the original files to get a feeling of the final size). Since the original files are preserved, this system takes twice as much disk space as needed. If you decide you don't need the original files, feel free to replace them with empty files with the same name. This will indicate to `dl.py` that they were already applied, so the script will not try to re-download them again (assuming the action `download-apply` is used), which would happen if the files were simply removed.
+Note that data takes a lot of disk space (explore the original files to get a feeling of the final size). Since the original files are preserved, this system takes *twice* as much disk space as needed. If you decide that you don't need the original files, feel free to replace them with empty files with the same name. This will indicate to `dl.py` that they were already applied, so the script will not try to re-download them again (assuming the action `download-apply` is used), which would happen if the files were simply removed.
 
-The dimensions when creating a new H5FS file must be specified through `--scroll-size-xyz` parameter. They can be obtained from scroll data, from `volumes/meta.json` file (width/height/slices).
+The dimensions when creating a new H5FS file must be specified through `--scroll-size-xyz` parameter. They can be obtained from the server from the scroll's `volumes/meta.json` file (width/height/slices).
 
-The reason for split `download` and `apply` actions is that H5FS file can't be written to while there is a process reading from it. These two actions allow downloading the data in background, while using the explorer app at the same time. Once the data is downloaded `apply` can be used to apply all the data in the selected region of interest.
+The reason for split `download` and `apply` actions is that H5FS file can't be written to while another process is reading from it. Splitting the process into `download` and `apply` actions allow sdownloading the data in background, while using the explorer app at the same time. Once the data is downloaded `apply` can be used to apply all the data in the selected region of interest, which is usually very fast compared to downloading.
 
 ## License
 
