@@ -10,7 +10,7 @@ from h5fsutil import H5FS
 from uiutils import Drag
 
 
-class Scroll3DViewer:
+class Scroll3DExplorer:
     arguments = None
     drag = Drag()
     scrolldata = None  # H5FS instance which gives us access to dataset
@@ -59,7 +59,7 @@ class Scroll3DViewer:
         self.root.after(self.ANIMATION_DELAY, self.animate)
 
     def parse_args(self):
-        argparser = argparse.ArgumentParser(usage="%(prog)s [OPTION]...", description="3D viewer for Vesuvius Challenge scroll data.")
+        argparser = argparse.ArgumentParser(usage="%(prog)s [OPTION]...", description="3D explorer of Vesuvius Challenge scroll data.")
         argparser.add_argument("--h5fs-scroll", help="full path to scroll H5FS (.h5) file; the first dataset there will be used", required=True)
         argparser.add_argument("--yxz", help="initial position, comma separated values; uses central position by default", required=True)
         argparser.add_argument("--zoom", help="initial zoom", required=False)
@@ -68,7 +68,7 @@ class Scroll3DViewer:
     def init_ui(self):
         self.root = tk.Tk()
         self.root.attributes("-zoomed", True)
-        self.root.title("Scroll 3D Viewer")
+        self.root.title("Scroll 3D Explorer")
 
         self.center_frame = tk.Frame(self.root, bg="white")
         self.center_frame.pack(side=tk.TOP, fill="both", expand=True)
@@ -385,5 +385,5 @@ class Scroll3DViewer:
 
 
 if __name__ == "__main__":
-    scroll3DViewer = Scroll3DViewer()
-    scroll3DViewer.run()
+    scroll3DExplorer = Scroll3DExplorer()
+    scroll3DExplorer.run()
