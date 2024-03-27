@@ -6,7 +6,7 @@ A tool for exploring scroll data for Vesuvius Challenge (https://scrollprize.org
 
 The script for downloading the data should work with any scroll data which is distributed via `volume_grids` format (which is true for PHerc0332, PHerc1667, Scroll1, Scroll2 and possibly others). Additionally, it should be fairly easy to change the app to load data from elsewhere. The app works with chunks which are loaded into memory, so only the loading part needs to be adapted.
 
-By default, app loads only 301x301x301 cube of data into memory. This allows working with the data even on memory or CPU constrained machines, or even machines with slow disk access. When exploring a region which is near the edge of the loaded data, use `l` to load new cube and discard the old one.
+By default, the app loads only 301x301x301 cube of data into memory. This allows working with the data even on memory or CPU constrained machines, or even machines with slow disk access. When exploring a region which is near the edge of the loaded data, use `l` to load new cube and discard the old one.
 
 ## Running
 
@@ -21,7 +21,7 @@ $ pipenv shell
 <shell> $ python main.py --h5fs-scroll /data/dir/scroll2_54kV.h5 --yxz 2845,4575,7750
 ```
 
-App assumes that data exists in a file which is in H5FS format, in the first dataset of the file, with the dimensions in y (height), x (width) and z (slices) order. However it should be fairly easy to change the few places that use `self.scrolldata` (like `load_scroll_data_around_position` method) to load the data from somewhere else, for example from the Zarr archive.
+The app assumes that the data exists in a file which is in H5FS format, in the first dataset of the file, with the dimensions in y (height), x (width) and z (slices) order. However it should be fairly easy to change the few places that use `self.scrolldata` (like `load_scroll_data_around_position` method) to load the data from somewhere else, for example from the Zarr archive.
 
 ### Navigation
 
@@ -54,11 +54,11 @@ This will download a single cell from http://dl.ash2txt.org/full-scrolls/Scroll2
 
 The script splits downloading and applying the data into two separate actions, which can be controled through `--actions` parameter. For most cases action `download-apply` is sufficient though.
 
-Note that data takes a lot of disk space (explore the original files to get a feeling of the final size). Since the original files are preserved, this system takes *twice* as much disk space as needed. If you decide that you don't need the original files, feel free to replace them with empty files with the same name. This will indicate to `dl.py` that they were already applied, so the script will not try to re-download them again (assuming the action `download-apply` is used), which would happen if the files were simply removed.
+Note that the data takes a lot of disk space (explore the original files to get a feeling of the final size). Since the original files are preserved, this system takes *twice* as much disk space as needed. If you decide that you don't need the original files, feel free to replace them with empty files with the same name. This will indicate to `dl.py` that they were already applied, so the script will not try to re-download them again (assuming the action `download-apply` is used), which would happen if the files were simply removed.
 
 The dimensions when creating a new H5FS file must be specified through `--scroll-size-xyz` parameter. They can be obtained from the server from the scroll's `volumes/meta.json` file (width/height/slices).
 
-The reason for split `download` and `apply` actions is that H5FS file can't be written to while another process is reading from it. Splitting the process into `download` and `apply` actions allow sdownloading the data in background, while using the explorer app at the same time. Once the data is downloaded `apply` can be used to apply all the data in the selected region of interest, which is usually very fast compared to downloading.
+The reason for split `download` and `apply` actions is that H5FS file can't be written to while another process is reading from it. Splitting the process into `download` and `apply` actions allows downloading the data in the background, while using the explorer app at the same time. Once the data is downloaded `apply` can be used to apply all the data in the selected region of interest, which is usually very fast compared to downloading.
 
 ## License
 
